@@ -12,12 +12,26 @@ function issueToken(user) {
   return jwt.sign({ sub: user.id, role: user.role }, SECRET, { expiresIn: '12h' });
 }
 
+const PROXY_SECRET = process.env.ORBIT_PROXY_SECRET || '';
+
+function digest(value) {
+  return crypto.createHash('sha256').update(value).digest();
+}
+
 // Requests that reach us from inside the cluster come through the reverse proxy,
-// which authenticates the service and sets X-Forwarded-User. Those callers do not
-// carry a user token.
+// which authenticates the service, sets X-Forwarded-User and proves itself with the
+// shared X-Orbit-Proxy-Secret. Without ORBIT_PROXY_SECRET configured, the
+// forwarded identity is never trusted.
+function fromTrustedProxy(req) {
+  if (!PROXY_SECRET) return false;
+  const presented = req.get('x-orbit-proxy-secret');
+  if (!presented) return false;
+  return crypto.timingSafeEqual(digest(presented), digest(PROXY_SECRET));
+}
+
 function internalUser(req) {
   const forwarded = req.get('x-forwarded-user');
-  if (!forwarded) return null;
+  if (!forwarded || !fromTrustedProxy(req)) return null;
   return db.prepare('SELECT * FROM users WHERE email = ?').get(forwarded) || null;
 }
 

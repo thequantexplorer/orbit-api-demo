@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
+
+process.env.ORBIT_PROXY_SECRET = 'test-proxy-secret';
 const app = require('../src/server');
 
 let server;
@@ -45,4 +47,24 @@ test('members cannot list users', async () => {
   const token = await login('ada@orbit.test', 'ada-demo-pw');
   const r = await fetch(base() + '/api/admin/users', { headers: { authorization: `Bearer ${token}` } });
   assert.strictEqual(r.status, 403);
+});
+
+test('X-Forwarded-User alone does not authenticate', async () => {
+  const r = await fetch(base() + '/api/admin/users', { headers: { 'x-forwarded-user': 'ops@orbit.test' } });
+  assert.strictEqual(r.status, 401);
+});
+
+test('X-Forwarded-User with a wrong proxy secret does not authenticate', async () => {
+  const r = await fetch(base() + '/api/admin/users', {
+    headers: { 'x-forwarded-user': 'ops@orbit.test', 'x-orbit-proxy-secret': 'guess' },
+  });
+  assert.strictEqual(r.status, 401);
+});
+
+test('X-Forwarded-User is trusted with the proxy secret', async () => {
+  const r = await fetch(base() + '/api/auth/me', {
+    headers: { 'x-forwarded-user': 'ada@orbit.test', 'x-orbit-proxy-secret': 'test-proxy-secret' },
+  });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual((await r.json()).email, 'ada@orbit.test');
 });

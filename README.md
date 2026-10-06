@@ -31,4 +31,8 @@ Then call the API with `Authorization: Bearer <token>`.
 ## Notes
 
 Internal services (the metrics collector and the nightly reporter) call the API from
-inside the cluster through the reverse proxy, which sets `X-Forwarded-User`.
+inside the cluster through the reverse proxy, which sets `X-Forwarded-User`. The API
+only trusts that header when the request also carries `X-Orbit-Proxy-Secret` matching
+the `ORBIT_PROXY_SECRET` env var; if `ORBIT_PROXY_SECRET` is unset, the header is
+ignored. The proxy must strip any client-supplied `X-Forwarded-User` and
+`X-Orbit-Proxy-Secret` before setting its own.
