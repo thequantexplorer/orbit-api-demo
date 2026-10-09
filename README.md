@@ -31,8 +31,4 @@ Then call the API with `Authorization: Bearer <token>`.
 ## Notes
 
 Internal services (the metrics collector and the nightly reporter) call the API from
-inside the cluster through the reverse proxy, which sets `X-Forwarded-User` and
-`X-Forwarded-User-Signature` (hex HMAC-SHA256 of the email keyed with `ORBIT_PROXY_SECRET`).
-The API only honours `X-Forwarded-User` when `ORBIT_PROXY_SECRET` is set and the signature
-matches; otherwise the header is ignored and a bearer token is required. The proxy must strip
-any client-supplied `X-Forwarded-User*` headers.
+inside the cluster through the reverse proxy, which sets `X-Forwarded-User`.
