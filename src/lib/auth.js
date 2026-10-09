@@ -12,12 +12,24 @@ function issueToken(user) {
   return jwt.sign({ sub: user.id, role: user.role }, SECRET, { expiresIn: '12h' });
 }
 
+const PROXY_SECRET = process.env.ORBIT_PROXY_SECRET || '';
+
+function signForwardedUser(email) {
+  return crypto.createHmac('sha256', PROXY_SECRET).update(email).digest('hex');
+}
+
 // Requests that reach us from inside the cluster come through the reverse proxy,
-// which authenticates the service and sets X-Forwarded-User. Those callers do not
-// carry a user token.
+// which authenticates the service and sets X-Forwarded-User plus
+// X-Forwarded-User-Signature = hex(HMAC-SHA256(ORBIT_PROXY_SECRET, email)).
+// The header is ignored unless ORBIT_PROXY_SECRET is set and the signature matches.
 function internalUser(req) {
+  if (!PROXY_SECRET) return null;
   const forwarded = req.get('x-forwarded-user');
-  if (!forwarded) return null;
+  const signature = req.get('x-forwarded-user-signature');
+  if (!forwarded || !signature) return null;
+  const expected = Buffer.from(signForwardedUser(forwarded), 'utf8');
+  const given = Buffer.from(signature, 'utf8');
+  if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) return null;
   return db.prepare('SELECT * FROM users WHERE email = ?').get(forwarded) || null;
 }
 
@@ -41,4 +53,4 @@ function requireUser(req, res, next) {
   }
 }
 
-module.exports = { hash, issueToken, requireUser };
+module.exports = { hash, issueToken, requireUser, signForwardedUser };
