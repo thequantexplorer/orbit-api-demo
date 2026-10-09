@@ -1,6 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
+process.env.ORBIT_PROXY_SECRET = 'test-proxy-secret';
 const app = require('../src/server');
+const { signForwardedUser } = require('../src/lib/auth');
 
 let server;
 const base = () => `http://127.0.0.1:${server.address().port}`;
@@ -45,4 +47,48 @@ test('members cannot list users', async () => {
   const token = await login('ada@orbit.test', 'ada-demo-pw');
   const r = await fetch(base() + '/api/admin/users', { headers: { authorization: `Bearer ${token}` } });
   assert.strictEqual(r.status, 403);
+});
+
+function proxyHeaders(email, { signedEmail = email, timestamp = Math.floor(Date.now() / 1000) } = {}) {
+  return {
+    'x-forwarded-user': email,
+    'x-forwarded-user-timestamp': String(timestamp),
+    'x-forwarded-user-signature': signForwardedUser(signedEmail, String(timestamp)),
+  };
+}
+
+test('an unsigned X-Forwarded-User header is not trusted', async () => {
+  const r = await fetch(base() + '/api/admin/users', { headers: { 'x-forwarded-user': 'ops@orbit.test' } });
+  assert.strictEqual(r.status, 401);
+});
+
+test('a signature for another user is not trusted', async () => {
+  const r = await fetch(base() + '/api/admin/users', {
+    headers: proxyHeaders('ops@orbit.test', { signedEmail: 'ada@orbit.test' }),
+  });
+  assert.strictEqual(r.status, 401);
+});
+
+test('a stale proxy signature is not trusted', async () => {
+  const r = await fetch(base() + '/api/admin/users', {
+    headers: proxyHeaders('ops@orbit.test', { timestamp: Math.floor(Date.now() / 1000) - 3600 }),
+  });
+  assert.strictEqual(r.status, 401);
+});
+
+test('a signature made with the wrong secret is not trusted', async () => {
+  const ts = String(Math.floor(Date.now() / 1000));
+  const r = await fetch(base() + '/api/admin/users', {
+    headers: {
+      'x-forwarded-user': 'ops@orbit.test',
+      'x-forwarded-user-timestamp': ts,
+      'x-forwarded-user-signature': signForwardedUser('ops@orbit.test', ts, 'guessed-secret'),
+    },
+  });
+  assert.strictEqual(r.status, 401);
+});
+
+test('a fresh proxy-signed X-Forwarded-User header is accepted', async () => {
+  const r = await fetch(base() + '/api/admin/users', { headers: proxyHeaders('ops@orbit.test') });
+  assert.strictEqual(r.status, 200);
 });
