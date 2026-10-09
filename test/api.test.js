@@ -1,6 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
+process.env.ORBIT_PROXY_SECRET = 'test-proxy-secret';
 const app = require('../src/server');
+const { signForwardedUser } = require('../src/lib/auth');
 
 let server;
 const base = () => `http://127.0.0.1:${server.address().port}`;
@@ -45,4 +47,23 @@ test('members cannot list users', async () => {
   const token = await login('ada@orbit.test', 'ada-demo-pw');
   const r = await fetch(base() + '/api/admin/users', { headers: { authorization: `Bearer ${token}` } });
   assert.strictEqual(r.status, 403);
+});
+
+test('an unsigned X-Forwarded-User header is not trusted', async () => {
+  const r = await fetch(base() + '/api/admin/users', { headers: { 'x-forwarded-user': 'ops@orbit.test' } });
+  assert.strictEqual(r.status, 401);
+});
+
+test('a forged X-Forwarded-User signature is not trusted', async () => {
+  const r = await fetch(base() + '/api/admin/users', {
+    headers: { 'x-forwarded-user': 'ops@orbit.test', 'x-forwarded-user-signature': signForwardedUser('ada@orbit.test') },
+  });
+  assert.strictEqual(r.status, 401);
+});
+
+test('a proxy-signed X-Forwarded-User header is accepted', async () => {
+  const r = await fetch(base() + '/api/admin/users', {
+    headers: { 'x-forwarded-user': 'ops@orbit.test', 'x-forwarded-user-signature': signForwardedUser('ops@orbit.test') },
+  });
+  assert.strictEqual(r.status, 200);
 });
