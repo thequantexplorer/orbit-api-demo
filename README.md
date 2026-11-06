@@ -28,6 +28,14 @@ Then call the API with `Authorization: Bearer <token>`.
 - `src/lib/files.js` — attachment storage helpers
 - `src/routes/` — boards, tasks, attachments, admin
 
+## Story points
+
+Tasks carry an optional `story_points` estimate on the Fibonacci scale: `1`, `2`, `3`, `5`,
+`8` or `13`. Send it on `POST /api/tasks` or `PATCH /api/tasks/:id`; `null` (the default)
+means not estimated and clears an existing estimate. Any other value returns `400`.
+`GET /api/tasks/:id` and `GET /api/boards/:id` include it on each task. Existing databases
+get the column added on startup.
+
 ## Notes
 
 Internal services (the metrics collector and the nightly reporter) call the API from

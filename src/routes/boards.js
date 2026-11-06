@@ -24,7 +24,7 @@ router.get('/:id', requireUser, (req, res) => {
   const board = db.prepare('SELECT * FROM boards WHERE id = ?').get(req.params.id);
   if (!board) return res.status(404).json({ error: 'board not found' });
   const tasks = db
-    .prepare('SELECT id, title, notes, status FROM tasks WHERE board_id = ? ORDER BY id')
+    .prepare('SELECT id, title, notes, status, story_points FROM tasks WHERE board_id = ? ORDER BY id')
     .all(board.id);
   res.json({ board, tasks });
 });

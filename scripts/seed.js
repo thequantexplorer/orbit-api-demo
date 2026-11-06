@@ -13,9 +13,11 @@ insertBoard.run(1, 1, 'Ada: Q3 roadmap', 'private');
 insertBoard.run(2, 2, 'Grace: compiler rewrite', 'private');
 insertBoard.run(3, 2, 'Grace: public changelog', 'public');
 
-const insertTask = db.prepare('INSERT INTO tasks (id, board_id, title, notes, status) VALUES (?, ?, ?, ?, ?)');
-insertTask.run(1, 1, 'Pick launch date', 'Waiting on marketing', 'todo');
-insertTask.run(2, 2, 'Port the optimizer', 'Internal: contract renewal numbers in the notes', 'doing');
-insertTask.run(3, 3, 'Write release notes', '', 'done');
+const insertTask = db.prepare(
+  'INSERT INTO tasks (id, board_id, title, notes, status, story_points) VALUES (?, ?, ?, ?, ?, ?)',
+);
+insertTask.run(1, 1, 'Pick launch date', 'Waiting on marketing', 'todo', 2);
+insertTask.run(2, 2, 'Port the optimizer', 'Internal: contract renewal numbers in the notes', 'doing', 8);
+insertTask.run(3, 3, 'Write release notes', '', 'done', null);
 
 console.log('seeded', require('../src/lib/db').DB_PATH);

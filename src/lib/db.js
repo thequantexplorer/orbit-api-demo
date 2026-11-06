@@ -27,7 +27,8 @@ db.exec(`
     board_id INTEGER NOT NULL REFERENCES boards(id),
     title TEXT NOT NULL,
     notes TEXT NOT NULL DEFAULT '',
-    status TEXT NOT NULL DEFAULT 'todo'
+    status TEXT NOT NULL DEFAULT 'todo',
+    story_points INTEGER
   );
   CREATE TABLE IF NOT EXISTS attachments (
     id INTEGER PRIMARY KEY,
@@ -37,5 +38,10 @@ db.exec(`
     size INTEGER NOT NULL
   );
 `);
+
+const taskColumns = db.prepare('PRAGMA table_info(tasks)').all().map((column) => column.name);
+if (!taskColumns.includes('story_points')) {
+  db.exec('ALTER TABLE tasks ADD COLUMN story_points INTEGER');
+}
 
 module.exports = { db, DB_PATH };
