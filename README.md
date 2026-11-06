@@ -8,8 +8,13 @@ have file attachments.
 ```bash
 npm install
 npm run seed      # creates data/orbit.db with two demo users and their boards
+export ORBIT_JWT_SECRET=$(openssl rand -hex 32)
 npm start         # listens on :4000
 ```
+
+`ORBIT_JWT_SECRET` is required: the server refuses to start if it is unset or shorter
+than 32 characters. Tokens are HS256 and expire after 12 hours; changing the secret
+invalidates every outstanding token.
 
 Sign in to get a token:
 

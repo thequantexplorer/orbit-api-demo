@@ -1,4 +1,5 @@
 const express = require('express');
+const { jwtSecret } = require('./lib/auth');
 const authRoutes = require('./routes/auth');
 const boardRoutes = require('./routes/boards');
 const taskRoutes = require('./routes/tasks');
@@ -22,6 +23,12 @@ app.use((err, req, res, next) => {
 
 const PORT = Number(process.env.PORT || 4000);
 if (require.main === module) {
+  try {
+    jwtSecret();
+  } catch (err) {
+    console.error(`refusing to start: ${err.message}`);
+    process.exit(1);
+  }
   app.listen(PORT, () => console.log(`orbit api on :${PORT}`));
 }
 
